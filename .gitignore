@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.worktrees/
+work/
+node_modules/
+web/.svelte-kit/
+web/build/
+internal/httpapi/dist/*
+!internal/httpapi/dist/.gitkeep
+chronograph
+coverage/
+playwright-report/
+test-results/
+
