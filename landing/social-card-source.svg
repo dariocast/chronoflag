@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Chronoflag — Shared time, under control</title>
+  <desc id="desc">Brutalist Chronoflag social card with a synchronized stopwatch.</desc>
+  <rect width="1200" height="630" fill="#fffdf5"/>
+  <rect x="18" y="18" width="1164" height="594" fill="none" stroke="#101010" stroke-width="10"/>
+
+  <text x="58" y="78" fill="#101010" font-family="Arial Black, Arial, sans-serif" font-size="34" font-weight="900" letter-spacing="-2">C/ CHRONOFLAG</text>
+  <circle cx="64" cy="122" r="9" fill="#ff665a" stroke="#101010" stroke-width="4"/>
+  <text x="86" y="129" fill="#101010" font-family="Menlo, monospace" font-size="16" font-weight="700" letter-spacing="1.5">SERVER-AUTHORITATIVE TIMING</text>
+
+  <text x="58" y="222" fill="#101010" font-family="Arial Black, Arial, sans-serif" font-size="78" font-weight="900" letter-spacing="-5">EVERYONE.</text>
+  <text x="58" y="292" fill="#101010" font-family="Arial Black, Arial, sans-serif" font-size="78" font-weight="900" letter-spacing="-5">ON THE SAME</text>
+  <text x="58" y="362" fill="#ff665a" stroke="#101010" stroke-width="2" paint-order="stroke" font-family="Arial Black, Arial, sans-serif" font-size="78" font-weight="900" letter-spacing="-5">SECOND.</text>
+  <text x="62" y="415" fill="#101010" font-family="Arial, sans-serif" font-size="23" font-weight="700">One server clock. Every screen follows it.</text>
+
+  <g transform="translate(650 112) rotate(1 240 178)">
+    <rect x="8" y="8" width="484" height="356" fill="#101010"/>
+    <rect width="484" height="356" fill="#ffffff" stroke="#101010" stroke-width="8"/>
+    <rect x="4" y="4" width="476" height="48" fill="#bca7ff"/>
+    <line x1="4" y1="52" x2="480" y2="52" stroke="#101010" stroke-width="4"/>
+    <text x="22" y="35" fill="#101010" font-family="Menlo, monospace" font-size="14" font-weight="700">LIVE / 001</text>
+    <text x="462" y="35" fill="#101010" font-family="Menlo, monospace" font-size="14" font-weight="700" text-anchor="end">SERVER SYNC</text>
+    <text x="242" y="220" fill="#101010" font-family="Menlo, monospace" font-size="108" font-weight="900" text-anchor="middle" letter-spacing="-10">12:34<tspan font-size="44" letter-spacing="-4">.56</tspan></text>
+    <rect x="4" y="272" width="476" height="48" fill="#dfff00"/>
+    <line x1="4" y1="272" x2="480" y2="272" stroke="#101010" stroke-width="4"/>
+    <circle cx="24" cy="296" r="7" fill="#ff665a" stroke="#101010" stroke-width="3"/>
+    <text x="42" y="302" fill="#101010" font-family="Menlo, monospace" font-size="14" font-weight="700">RUNNING</text>
+    <text x="462" y="302" fill="#101010" font-family="Menlo, monospace" font-size="14" font-weight="700" text-anchor="end">± SERVER</text>
+    <line x1="4" y1="320" x2="480" y2="320" stroke="#101010" stroke-width="4"/>
+    <text x="242" y="345" fill="#101010" font-family="Menlo, monospace" font-size="13" font-weight="700" text-anchor="middle">CONTROL / VIEW / EXPORT</text>
+  </g>
+
+  <rect x="58" y="482" width="462" height="76" fill="#dfff00" stroke="#101010" stroke-width="6"/>
+  <text x="84" y="530" fill="#101010" font-family="Arial Black, Arial, sans-serif" font-size="25" font-weight="900">OPEN. START. SHARE.</text>
+  <text x="1138" y="568" fill="#101010" font-family="Menlo, monospace" font-size="16" font-weight="700" text-anchor="end">CHRONOFLAG.COM ↗</text>
+</svg>

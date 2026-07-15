@@ -60,6 +60,8 @@ app.chronoflag.com {
 
 Preserve streaming responses, disable proxy buffering for `text/event-stream`, enable HTTP/2, and synchronize host time with chrony/systemd-timesyncd. Back up the `chronograph-data` volume and regularly test restore. Capability URLs are credentials: exclude them from access logs and analytics.
 
+The landing container serves its own `robots.txt`, `sitemap.xml`, web manifest, favicon set, social card, Open Graph/Twitter metadata, and JSON-LD. After deployment, verify these files through the public Cloudflare hostname and purge cached versions when metadata changes. If [Cloudflare Managed `robots.txt`](https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/) is enabled, Cloudflare prepends its crawler policy to the origin file; the Chronoflag sitemap directive remains in the origin response.
+
 ## Configuration
 
 | Variable | Purpose | Default |
