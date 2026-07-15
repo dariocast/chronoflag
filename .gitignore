@@ -6,9 +6,8 @@ node_modules/
 web/.svelte-kit/
 web/build/
 internal/httpapi/dist/*
-!internal/httpapi/dist/.gitkeep
-chronograph
+!internal/httpapi/dist/index.html
+/chronograph
 coverage/
 playwright-report/
 test-results/
-
