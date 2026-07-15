@@ -46,7 +46,8 @@ func pgerr(e error) error {
 	return e
 }
 func (p *Postgres) CreateInstance(ctx context.Context, now time.Time) (CreatedInstance, error) {
-	id, control, view := token(), token(), token()
+	id, control := token(), token()
+	view := id
 	s := InstanceSnapshot{ID: id, Tier: Free, Lifecycle: Active, LastControlAt: now, Clocks: []clock.Clock{clock.NewStopwatch(token())}}
 	b, _ := json.Marshal(s)
 	tx, e := p.pool.Begin(ctx)

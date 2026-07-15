@@ -39,6 +39,7 @@ func NewRouter(s store.Store, h *realtime.Hub) http.Handler {
 	m.HandleFunc("GET /api/v1/{scope}/{token}/events", a.sse)
 	m.HandleFunc("GET /api/v1/control/{token}/export", a.export)
 	m.HandleFunc("DELETE /api/v1/control/{token}", a.delete)
+	m.Handle("/", staticHandler())
 	return security(m)
 }
 func security(next http.Handler) http.Handler {

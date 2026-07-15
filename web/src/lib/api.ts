@@ -1,0 +1,11 @@
+import type { ClockType, Created, Snapshot } from './types';
+async function request<T>(path:string,init?:RequestInit):Promise<T>{const res=await fetch(path,init);if(!res.ok){const body=await res.json().catch(()=>({error:res.statusText}));throw new Error(body.error??res.statusText)}return res.status===204?undefined as T:res.json()}
+export const createInstance=()=>request<Created>('/api/v1/instances',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});
+export const getSnapshot=(mode:'control'|'view',token:string)=>request<Snapshot>(`/api/v1/${mode}/${token}`);
+export function command(token:string,clock:string,type:string){return request<Snapshot>(`/api/v1/control/${token}/clocks/${clock}/commands`,{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({type,device_id:deviceID()})})}
+export function undo(token:string,clock:string){return request<Snapshot>(`/api/v1/control/${token}/clocks/${clock}/undo`,{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()}})}
+export function addClock(token:string,type:ClockType,durationMS=0){return request<Snapshot>(`/api/v1/control/${token}/clocks`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type,duration_ms:durationMS})})}
+export function patchClock(token:string,id:string,body:object){return request<Snapshot>(`/api/v1/control/${token}/clocks/${id}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)})}
+export function removeClock(token:string,id:string){return request<Snapshot>(`/api/v1/control/${token}/clocks/${id}`,{method:'DELETE'})}
+function deviceID(){if(typeof localStorage==='undefined')return 'web';let id=localStorage.getItem('chrono-device');if(!id){id=crypto.randomUUID();localStorage.setItem('chrono-device',id)}return id}
+export function events(mode:'control'|'view',token:string,onSnapshot:(s:Snapshot)=>void,onStatus:(s:string)=>void){const source=new EventSource(`/api/v1/${mode}/${token}/events`);source.addEventListener('snapshot',(e)=>onSnapshot(JSON.parse((e as MessageEvent).data)));source.addEventListener('update',(e)=>onSnapshot(JSON.parse((e as MessageEvent).data)));source.onopen=()=>onStatus('synced');source.onerror=()=>onStatus('offline');return()=>source.close()}

@@ -40,7 +40,8 @@ func hash(s string) [32]byte { return sha256.Sum256([]byte(s)) }
 func (m *Memory) CreateInstance(_ context.Context, now time.Time) (CreatedInstance, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	id, control, view := token(), token(), token()
+	id, control := token(), token()
+	view := id
 	clockID := token()
 	s := InstanceSnapshot{ID: id, Tier: Free, Lifecycle: Active, LastControlAt: now, Clocks: []clock.Clock{clock.NewStopwatch(clockID)}}
 	m.instances[id] = &memoryRecord{snapshot: s, commands: map[string]clock.Event{}}
