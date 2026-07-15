@@ -1,7 +1,7 @@
 # Race Control UI/UX Redesign
 
-**Date:** 2026-07-15  
-**Status:** Approved  
+**Date:** 2026-07-15
+**Status:** Approved
 **Baseline:** `v0.1.0-mvp` (`f312dfb`)
 
 ## Objective

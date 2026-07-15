@@ -51,7 +51,7 @@ describe('StatusBadge', () => {
 
 - [ ] **Step 2: Run the test and verify RED**
 
-Run: `cd web && npm test -- --run src/lib/StatusBadge.test.ts`  
+Run: `cd web && npm test -- --run src/lib/StatusBadge.test.ts`
 Expected: FAIL because `StatusBadge.svelte` does not exist.
 
 - [ ] **Step 3: Implement the minimal badge**
@@ -72,7 +72,7 @@ Expected: FAIL because `StatusBadge.svelte` does not exist.
 
 - [ ] **Step 4: Run the test and verify GREEN**
 
-Run: `cd web && npm test -- --run src/lib/StatusBadge.test.ts`  
+Run: `cd web && npm test -- --run src/lib/StatusBadge.test.ts`
 Expected: 4 cases pass.
 
 - [ ] **Step 5: Commit**
@@ -118,7 +118,7 @@ describe('Modal', () => {
 
 - [ ] **Step 2: Run the tests and verify RED**
 
-Run: `cd web && npm test -- --run src/lib/Modal.test.ts`  
+Run: `cd web && npm test -- --run src/lib/Modal.test.ts`
 Expected: FAIL because `Modal.svelte` does not exist.
 
 - [ ] **Step 3: Implement semantic dialog lifecycle**
@@ -139,7 +139,7 @@ Implement a native `<dialog>` with `aria-labelledby`, a close button using the s
 
 - [ ] **Step 4: Run the tests and verify GREEN**
 
-Run: `cd web && npm test -- --run src/lib/Modal.test.ts`  
+Run: `cd web && npm test -- --run src/lib/Modal.test.ts`
 Expected: both tests pass with no console errors.
 
 - [ ] **Step 5: Commit**
@@ -168,7 +168,7 @@ expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
 
 - [ ] **Step 2: Run the focused test and verify RED**
 
-Run: `cd web && npm test -- --run src/lib/ClockCard.test.ts`  
+Run: `cd web && npm test -- --run src/lib/ClockCard.test.ts`
 Expected: FAIL because the current article and tool group are unnamed and reset is labeled only `Reset`.
 
 - [ ] **Step 3: Rebuild card semantics and hierarchy**
@@ -177,7 +177,7 @@ Use an `aria-label` on the article, a state dot plus visible state word, a `time
 
 - [ ] **Step 4: Run the focused tests and verify GREEN**
 
-Run: `cd web && npm test -- --run src/lib/ClockCard.test.ts`  
+Run: `cd web && npm test -- --run src/lib/ClockCard.test.ts`
 Expected: all ClockCard tests pass.
 
 - [ ] **Step 5: Commit**
@@ -209,7 +209,7 @@ await expect(page.getByRole('button', { name: 'Share' })).toBeFocused();
 
 - [ ] **Step 2: Run Playwright and verify RED**
 
-Run: `cd web && npm run test:e2e -- --grep "creates, controls"`  
+Run: `cd web && npm run test:e2e -- --grep "creates, controls"`
 Expected: FAIL because the current panels are asides, lack dialog names, lack copy feedback, and do not restore focus.
 
 - [ ] **Step 3: Integrate `Modal` and `StatusBadge`**
@@ -231,7 +231,7 @@ Retain event subscription, 20ms display projection, timer expiry, undo window, A
 
 - [ ] **Step 4: Run Playwright and verify GREEN**
 
-Run: `cd web && npm run test:e2e -- --grep "creates, controls"`  
+Run: `cd web && npm run test:e2e -- --grep "creates, controls"`
 Expected: the complete stopwatch/share/public synchronization flow passes.
 
 - [ ] **Step 5: Commit**
@@ -254,7 +254,7 @@ Add a Playwright test covering 390×844, 844×390, 768×1024, and 1440×900 view
 
 - [ ] **Step 2: Run the responsive test and verify RED**
 
-Run: `cd web && npm run test:e2e -- --grep "fits supported viewports"`  
+Run: `cd web && npm run test:e2e -- --grep "fits supported viewports"`
 Expected: FAIL on at least the existing compact tool buttons, which are below 44px.
 
 - [ ] **Step 3: Rebuild landing markup**
@@ -267,12 +267,12 @@ Define the approved colors, spacing, border, shadow, typography, and motion toke
 
 - [ ] **Step 5: Run the responsive test and verify GREEN**
 
-Run: `cd web && npm run test:e2e -- --grep "fits supported viewports"`  
+Run: `cd web && npm run test:e2e -- --grep "fits supported viewports"`
 Expected: all viewport and touch-target assertions pass.
 
 - [ ] **Step 6: Run component tests and type checking**
 
-Run: `cd web && npm test -- --run && npm run check`  
+Run: `cd web && npm test -- --run && npm run check`
 Expected: all tests pass and Svelte reports 0 errors and 0 warnings.
 
 - [ ] **Step 7: Commit**
@@ -289,12 +289,12 @@ git commit -m "feat: apply race control visual system"
 
 - [ ] **Step 1: Run the full repository gate**
 
-Run: `make verify`  
+Run: `make verify`
 Expected: Go tests, Vitest, `go vet`, Svelte check, production web build, Go build, and Go race tests all exit 0.
 
 - [ ] **Step 2: Run complete browser flows**
 
-Run: `cd web && npm run test:e2e`  
+Run: `cd web && npm run test:e2e`
 Expected: stopwatch/public tracking, independent timer, dialogs, and viewport tests all pass.
 
 - [ ] **Step 3: Inspect fresh browser screenshots**
@@ -303,7 +303,7 @@ Build and run the current image with Docker Compose, then capture landing, contr
 
 - [ ] **Step 4: Check repository state and diff quality**
 
-Run: `git diff v0.1.0-mvp --check && git status --short && git log --oneline v0.1.0-mvp..HEAD`  
+Run: `git diff v0.1.0-mvp --check && git status --short && git log --oneline v0.1.0-mvp..HEAD`
 Expected: no whitespace errors, only intentional files are changed, and commits map to the plan.
 
 - [ ] **Step 5: Commit any verification-driven fix**
