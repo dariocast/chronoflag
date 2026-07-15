@@ -1,16 +1,233 @@
 <script lang="ts">
-  import { onMount } from 'svelte'; import ClockCard from './ClockCard.svelte'; import type { Snapshot,ClockType } from './types'; import {elapsedAt} from './clock'; import * as api from './api';
-  export let token:string; export let mode:'control'|'view'; let snapshot:Snapshot|null=null;let status='connecting';let now=new Date();let error='';let share=false;let adding=false;let undoUntil:Record<string,number>={};const expiring=new Set<string>();
-  onMount(()=>{api.getSnapshot(mode,token).then(v=>snapshot=v).catch(e=>error=e.message);const stop=api.events(mode,token,v=>{const was=snapshot;snapshot=v;if(v.clocks.some(c=>c.state==='expired'&&was?.clocks.find(o=>o.id===c.id)?.state!=='expired')){navigator.vibrate?.(250)}},s=>status=s);const tick=setInterval(()=>{now=new Date();if(control&&snapshot)for(const c of snapshot.clocks)if(c.type==='timer'&&c.state==='running'&&elapsedAt(c,now)>=c.duration&&!expiring.has(c.id)){expiring.add(c.id);void act(c.id,'expire').finally(()=>expiring.delete(c.id))}},20);return()=>{stop();clearInterval(tick)}});
-  async function act(id:string,type:string){try{status='sending';snapshot=type==='undo'?await api.undo(token,id):await api.command(token,id,type);if(type==='undo')delete undoUntil[id];else undoUntil={...undoUntil,[id]:Date.now()+10000};status='synced'}catch(e){error=(e as Error).message;status='offline'}}
-  async function add(type:ClockType,durationMS=0){snapshot=await api.addClock(token,type,durationMS);adding=false}
-  async function patch(id:string,body:object){snapshot=await api.patchClock(token,id,body)}
-  async function remove(id:string){if(confirm('Delete this clock?'))snapshot=await api.removeClock(token,id)}
-  $: control=mode==='control'; $: publicURL=snapshot?`${location.origin}/v/${snapshot.id}`:'';
+  import { onMount } from 'svelte';
+  import ClockCard from './ClockCard.svelte';
+  import Modal from './Modal.svelte';
+  import StatusBadge from './StatusBadge.svelte';
+  import type { Snapshot, ClockType } from './types';
+  import { elapsedAt } from './clock';
+  import * as api from './api';
+
+  export let token: string;
+  export let mode: 'control' | 'view';
+
+  let snapshot: Snapshot | null = null;
+  let status = 'connecting';
+  let now = new Date();
+  let error = '';
+  let feedback = '';
+  let activePanel: 'share' | 'add' | null = null;
+  let undoUntil: Record<string, number> = {};
+  const expiring = new Set<string>();
+
+  $: control = mode === 'control';
+  $: publicURL = snapshot && typeof location !== 'undefined'
+    ? `${location.origin}/v/${snapshot.id}`
+    : '';
+
+  onMount(() => {
+    api.getSnapshot(mode, token).then((value) => snapshot = value).catch(reportError);
+    const stop = api.events(
+      mode,
+      token,
+      (value) => {
+        const previous = snapshot;
+        snapshot = value;
+        if (value.clocks.some((clock) =>
+          clock.state === 'expired' &&
+          previous?.clocks.find((other) => other.id === clock.id)?.state !== 'expired'
+        )) navigator.vibrate?.(250);
+      },
+      (value) => status = value
+    );
+    const tick = setInterval(() => {
+      now = new Date();
+      if (!control || !snapshot) return;
+      for (const clock of snapshot.clocks) {
+        if (
+          clock.type === 'timer' &&
+          clock.state === 'running' &&
+          elapsedAt(clock, now) >= clock.duration &&
+          !expiring.has(clock.id)
+        ) {
+          expiring.add(clock.id);
+          void act(clock.id, 'expire').finally(() => expiring.delete(clock.id));
+        }
+      }
+    }, 20);
+    return () => {
+      stop();
+      clearInterval(tick);
+    };
+  });
+
+  function reportError(reason: unknown) {
+    error = reason instanceof Error ? reason.message : 'Something went wrong.';
+    status = 'offline';
+  }
+
+  function commandFeedback(type: string) {
+    const messages: Record<string, string> = {
+      start: 'Clock started',
+      pause: 'Clock paused',
+      resume: 'Clock resumed',
+      lap: 'Lap recorded',
+      reset: 'Clock reset',
+      undo: 'Last action undone',
+      expire: 'Timer expired'
+    };
+    feedback = messages[type] ?? '';
+  }
+
+  async function act(id: string, type: string) {
+    try {
+      error = '';
+      status = 'sending';
+      snapshot = type === 'undo'
+        ? await api.undo(token, id)
+        : await api.command(token, id, type);
+      if (type === 'undo') delete undoUntil[id];
+      else undoUntil = { ...undoUntil, [id]: Date.now() + 10_000 };
+      commandFeedback(type);
+      status = 'synced';
+    } catch (reason) {
+      reportError(reason);
+    }
+  }
+
+  async function add(type: ClockType, durationMS = 0) {
+    try {
+      error = '';
+      snapshot = await api.addClock(token, type, durationMS);
+      activePanel = null;
+      feedback = type === 'stopwatch' ? 'Stopwatch added' : 'Timer added';
+    } catch (reason) {
+      reportError(reason);
+    }
+  }
+
+  async function patch(id: string, body: object) {
+    try {
+      error = '';
+      snapshot = await api.patchClock(token, id, body);
+    } catch (reason) {
+      reportError(reason);
+    }
+  }
+
+  async function remove(id: string) {
+    if (!confirm('Delete this clock? This cannot be undone.')) return;
+    try {
+      error = '';
+      snapshot = await api.removeClock(token, id);
+      feedback = 'Clock deleted';
+    } catch (reason) {
+      reportError(reason);
+    }
+  }
+
+  async function copyLink(value: string, kind: 'Control' | 'Public') {
+    try {
+      await navigator.clipboard.writeText(value);
+      feedback = `${kind} link copied`;
+    } catch {
+      error = 'Could not copy the link. Select and copy it manually.';
+    }
+  }
 </script>
-<svelte:head><title>{control?'Race Control':'Live Board'} — Chronograph</title></svelte:head>
-<header class="topbar"><a href="/" class="brand">CHRONOGRAPH</a><span class="status" data-state={status}>{status.toUpperCase()}</span>{#if control}<button on:click={()=>share=!share}>Share</button><button class="add" on:click={()=>adding=!adding}>+ Add clock</button>{/if}</header>
-{#if share&&snapshot}<aside class="panel"><button aria-label="Close share panel" on:click={()=>share=false}>× Close</button><h2>SHARE LINKS</h2><label>CONTROL<input readonly value={location.href}/></label><button on:click={()=>navigator.clipboard.writeText(location.href)}>Copy control</button><label>PUBLIC<input readonly value={publicURL}/></label><button on:click={()=>navigator.clipboard.writeText(publicURL)}>Copy public</button><p>Anyone with the public link can watch. Keep the control link secret.</p></aside>{/if}
-{#if adding}<aside class="panel"><h2>ADD CLOCK</h2><button on:click={()=>add('stopwatch')}>Stopwatch</button><div class="presets">{#each [1,3,5,10,15,30,60] as min}<button on:click={()=>add('timer',min*60000)}>{min} min</button>{/each}</div></aside>{/if}
-{#if error}<div class="error" role="alert">{error}<button on:click={()=>location.reload()}>Retry</button></div>{/if}
-{#if snapshot}<main class:public-board={!control} class="board">{#each snapshot.clocks as c,index (c.id)}<ClockCard clock={c} {control} {now} {index} total={snapshot.clocks.length} canUndo={(undoUntil[c.id]??0)>now.getTime()} highlighted={snapshot.highlighted_clock_id===c.id} onaction={(type)=>act(c.id,type)} onlabel={(label)=>patch(c.id,{label})} onmove={(order)=>patch(c.id,{order})} onhighlight={()=>patch(c.id,{highlighted:snapshot?.highlighted_clock_id!==c.id})} onremove={()=>remove(c.id)}/>{/each}</main>{:else}<main class="loading">CONNECTING…</main>{/if}
+
+<svelte:head><title>{control ? 'Race Control' : 'Live Board'} — Chronograph</title></svelte:head>
+
+<div class:public-shell={!control} class="app-shell">
+  <header class="command-bar">
+    <a href="/" class="brand" aria-label="Chronograph home"><span>C/</span> Chronograph</a>
+    {#if !control}<span class="view-badge">Live board</span>{/if}
+    <StatusBadge state={status} />
+    {#if control}
+      <nav class="command-actions" aria-label="Board actions">
+        <button class="secondary" on:click={() => activePanel = 'share'}>Share</button>
+        <button class="add" on:click={() => activePanel = 'add'}><span aria-hidden="true">＋</span> Add clock</button>
+      </nav>
+    {/if}
+  </header>
+
+  <div class="sr-only" role="status" aria-live="polite">{feedback}</div>
+
+  {#if error}
+    <div class="error-banner" role="alert">
+      <div><strong>Connection problem</strong><span>{error}</span></div>
+      <button on:click={() => location.reload()}>Retry</button>
+    </div>
+  {/if}
+
+  {#if snapshot}
+    <section class="board-intro" aria-labelledby="board-title">
+      <div>
+        <p class="eyebrow">{control ? 'Server-synced command centre' : 'Server-synced broadcast'}</p>
+        <h1 id="board-title">{control ? 'Control deck' : 'Live board'}</h1>
+      </div>
+      <p class="board-count">{snapshot.clocks.length} {snapshot.clocks.length === 1 ? 'clock' : 'clocks'}</p>
+    </section>
+
+    <main class:public-board={!control} class="board">
+      {#each snapshot.clocks as clock, index (clock.id)}
+        <ClockCard
+          {clock}
+          {control}
+          {now}
+          {index}
+          total={snapshot.clocks.length}
+          canUndo={(undoUntil[clock.id] ?? 0) > now.getTime()}
+          highlighted={snapshot.highlighted_clock_id === clock.id}
+          onaction={(type) => act(clock.id, type)}
+          onlabel={(label) => patch(clock.id, { label })}
+          onmove={(order) => patch(clock.id, { order })}
+          onhighlight={() => patch(clock.id, { highlighted: snapshot?.highlighted_clock_id !== clock.id })}
+          onremove={() => remove(clock.id)}
+        />
+      {/each}
+    </main>
+  {:else}
+    <main class="loading" aria-busy="true"><span>Connecting</span><b>00:00.00</b></main>
+  {/if}
+</div>
+
+<Modal open={activePanel === 'share'} title="Share links" onclose={() => activePanel = null}>
+  {#if snapshot}
+    <p class="modal-lede">Send the public link to spectators. Keep the control link between operators.</p>
+    <div class="link-block secret-link">
+      <div class="link-heading"><strong>Control link</strong><span>Secret · can operate clocks</span></div>
+      <label>
+        <span class="sr-only">Control operator link</span>
+        <input aria-label="Control operator link" readonly value={location.href} />
+      </label>
+      <button on:click={() => copyLink(location.href, 'Control')}>Copy control link</button>
+    </div>
+    <div class="link-block public-link">
+      <div class="link-heading"><strong>Public link</strong><span>Safe to share · view only</span></div>
+      <label>
+        <span class="sr-only">Public viewer link</span>
+        <input aria-label="Public viewer link" readonly value={publicURL} />
+      </label>
+      <button class="primary" on:click={() => copyLink(publicURL, 'Public')}>Copy public link</button>
+    </div>
+    {#if feedback.includes('link copied')}<p class="inline-feedback" role="status">{feedback}</p>{/if}
+  {/if}
+</Modal>
+
+<Modal open={activePanel === 'add'} title="Add clock" eyebrow="Independent timing" onclose={() => activePanel = null}>
+  <p class="modal-lede">Every clock runs independently. Add one now and name it whenever you are ready.</p>
+  <button class="clock-choice" on:click={() => add('stopwatch')}>
+    <span class="choice-icon" aria-hidden="true">＋</span>
+    <span><strong>New stopwatch</strong><small>Count up with lap recording</small></span>
+  </button>
+  <div class="timer-choices">
+    <div class="link-heading"><strong>Countdown timer</strong><span>Stops automatically at zero</span></div>
+    <div class="presets">
+      {#each [1, 3, 5, 10, 15, 30, 60] as minutes}
+        <button on:click={() => add('timer', minutes * 60_000)} aria-label={`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`}>
+          <strong>{minutes}</strong><span>min</span>
+        </button>
+      {/each}
+    </div>
+  </div>
+</Modal>
