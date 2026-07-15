@@ -3,7 +3,7 @@
 
   export let open = false;
   export let title: string;
-  export let eyebrow = 'Chronograph';
+  export let eyebrow = 'Chronoflag';
   export let onclose: () => void = () => {};
 
   let dialog: HTMLDialogElement;

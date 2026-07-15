@@ -5,6 +5,7 @@ outputs
 web/node_modules
 web/.svelte-kit
 web/build
+landing
 internal/httpapi/dist
 chronograph
 .env

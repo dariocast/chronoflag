@@ -1,4 +1,13 @@
 services:
+  landing:
+    build: ./landing
+    restart: unless-stopped
+    ports: ["${LANDING_HTTP_PORT:-8081}:8080"]
+    healthcheck:
+      test: [CMD, wget, -qO-, http://127.0.0.1:8080/healthz]
+      interval: 10s
+      timeout: 3s
+      retries: 10
   db:
     image: postgres:18-alpine
     restart: unless-stopped
@@ -18,7 +27,7 @@ services:
     environment:
       DATABASE_URL: postgres://chronograph:${POSTGRES_PASSWORD}@db:5432/chronograph?sslmode=disable
       LISTEN_ADDR: :8080
-    ports: ["${HTTP_PORT:-8080}:8080"]
+    ports: ["${APP_HTTP_PORT:-8080}:8080"]
     depends_on:
       db: {condition: service_healthy}
     healthcheck:

@@ -22,14 +22,14 @@
 </script>
 
 <svelte:head>
-  <title>Chronograph — Shared time, instantly</title>
+  <title>Chronoflag — Shared time, instantly</title>
   <meta name="description" content="A server-synchronized stopwatch and timer you can share instantly." />
 </svelte:head>
 
 <main class="landing">
   <header class="landing-top">
     <p class="eyebrow"><span class="registration-dot" aria-hidden="true"></span> Cloud-synchronized time</p>
-    <div class="landing-mark" aria-label="Chronograph">C/</div>
+    <div class="landing-mark" aria-label="Chronoflag">C/</div>
   </header>
 
   <div class="landing-layout">

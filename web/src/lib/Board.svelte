@@ -135,11 +135,11 @@
   }
 </script>
 
-<svelte:head><title>{control ? 'Race Control' : 'Live Board'} — Chronograph</title></svelte:head>
+<svelte:head><title>{control ? 'Race Control' : 'Live Board'} — Chronoflag</title></svelte:head>
 
 <div class:public-shell={!control} class="app-shell">
   <header class="command-bar">
-    <a href="/" class="brand" aria-label="Chronograph home"><span>C/</span> Chronograph</a>
+    <a href="/" class="brand" aria-label="Chronoflag home"><span>C/</span> Chronoflag</a>
     {#if !control}<span class="view-badge">Live board</span>{/if}
     <StatusBadge state={status} />
     {#if control}
