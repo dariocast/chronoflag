@@ -1,0 +1,27 @@
+{
+  "name": "chronograph-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@sveltejs/adapter-static": "^3.0.8",
+    "@sveltejs/kit": "^2.27.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/svelte": "^5.2.8",
+    "@types/node": "^24.0.15",
+    "jsdom": "^26.1.0",
+    "svelte": "^5.56.5",
+    "svelte-check": "^4.2.2",
+    "typescript": "^5.8.3",
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10"
+  }
+}

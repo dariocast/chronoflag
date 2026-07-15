@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: chronograph
+      POSTGRES_USER: chronograph
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes: [chronograph-data:/var/lib/postgresql]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U chronograph -d chronograph"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://chronograph:${POSTGRES_PASSWORD}@db:5432/chronograph?sslmode=disable
+      LISTEN_ADDR: :8080
+    ports: ["${HTTP_PORT:-8080}:8080"]
+    depends_on:
+      db: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -qO-, http://127.0.0.1:8080/healthz]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+volumes:
+  chronograph-data:
