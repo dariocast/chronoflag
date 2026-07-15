@@ -19,14 +19,18 @@ func staticHandler() http.Handler {
 	if e != nil {
 		panic(e)
 	}
+	index := "index.html"
+	if _, err := fs.Stat(root, index); err != nil {
+		index = "fallback.html"
+	}
 	files := http.FileServer(http.FS(root))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		clean := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
 		if clean == "." {
-			clean = "index.html"
+			clean = index
 		}
 		if _, e := fs.Stat(root, clean); e != nil {
-			clean = "index.html"
+			clean = index
 		}
 		if strings.Contains(clean, "/_app/immutable/") {
 			w.Header().Set("Cache-Control", "public,max-age=31536000,immutable")
@@ -38,7 +42,7 @@ func staticHandler() http.Handler {
 				w.Header().Set("Content-Type", kind)
 			}
 		}
-		if clean == "index.html" {
+		if clean == index {
 			body, err := fs.ReadFile(root, clean)
 			if err != nil {
 				http.NotFound(w, r)

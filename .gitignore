@@ -6,7 +6,7 @@ node_modules/
 web/.svelte-kit/
 web/build/
 internal/httpapi/dist/*
-!internal/httpapi/dist/index.html
+!internal/httpapi/dist/fallback.html
 /chronograph
 coverage/
 playwright-report/
