@@ -36,3 +36,27 @@ test('adds an independent countdown timer', async ({ page }) => {
   await expect(page.getByText('Stopwatch', { exact: true })).toHaveCount(1);
   await expect(page.getByText('Timer', { exact: true })).toHaveCount(1);
 });
+
+test('fits supported viewports with touch-sized controls', async ({ page }) => {
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+    { width: 768, height: 1024 },
+    { width: 1440, height: 900 }
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+
+    await page.getByRole('button', { name: 'Start now' }).click();
+    await expect(page).toHaveURL(/\/c\//);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+
+    const buttonHeights = await page.locator('button:visible').evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(buttonHeights.every((height) => height >= 44)).toBe(true);
+  }
+});
