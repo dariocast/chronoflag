@@ -168,35 +168,47 @@ func (p *Postgres) Undo(ctx context.Context, c Capability, id, commandID string,
 	if e := requireControl(c); e != nil {
 		return InstanceSnapshot{}, clock.Event{}, e
 	}
-	var out clock.Event
-	s, e := locked(ctx, p.pool, c.InstanceID, func(s *InstanceSnapshot) error {
-		var b []byte
-		if e := p.pool.QueryRow(ctx, "SELECT event FROM clock_events WHERE instance_id=$1 AND clock_id=$2 ORDER BY sequence DESC LIMIT 1", s.ID, id).Scan(&b); e != nil {
-			return pgerr(e)
-		}
-		var latest clock.Event
-		if e := json.Unmarshal(b, &latest); e != nil {
-			return e
-		}
-		i := findClock(s, id)
-		if i < 0 {
-			return ErrNotFound
-		}
-		latest.Sequence = s.Clocks[i].Version
-		next, ev, e := clock.Compensate(s.Clocks[i], latest, now, commandID)
-		if e != nil {
-			return e
-		}
-		s.Clocks[i] = next
-		s.Version++
-		s.LastControlAt = now
-		ev.Sequence = s.Version
-		out = ev
-		eb, _ := json.Marshal(ev)
-		_, e = p.pool.Exec(ctx, "INSERT INTO clock_events(instance_id,sequence,clock_id,command_id,event) VALUES($1,$2,$3,$4,$5)", s.ID, ev.Sequence, id, commandID, eb)
-		return e
-	})
-	return s, out, e
+	tx, e := p.pool.Begin(ctx)
+	if e != nil {
+		return InstanceSnapshot{}, clock.Event{}, e
+	}
+	defer tx.Rollback(ctx)
+	s, e := scanSnapshot(tx.QueryRow(ctx, "SELECT snapshot FROM instances WHERE id=$1 FOR UPDATE", c.InstanceID))
+	if e != nil {
+		return s, clock.Event{}, e
+	}
+	var b []byte
+	if e = tx.QueryRow(ctx, "SELECT event FROM clock_events WHERE instance_id=$1 AND clock_id=$2 ORDER BY sequence DESC LIMIT 1", s.ID, id).Scan(&b); e != nil {
+		return s, clock.Event{}, pgerr(e)
+	}
+	var latest clock.Event
+	if e = json.Unmarshal(b, &latest); e != nil {
+		return s, clock.Event{}, e
+	}
+	i := findClock(&s, id)
+	if i < 0 {
+		return s, clock.Event{}, ErrNotFound
+	}
+	latest.Sequence = s.Clocks[i].Version
+	next, ev, e := clock.Compensate(s.Clocks[i], latest, now, commandID)
+	if e != nil {
+		return s, clock.Event{}, e
+	}
+	s.Clocks[i] = next
+	s.Version++
+	s.LastControlAt = now
+	ev.Sequence = s.Version
+	eb, _ := json.Marshal(ev)
+	if _, e = tx.Exec(ctx, "INSERT INTO clock_events(instance_id,sequence,clock_id,command_id,event) VALUES($1,$2,$3,$4,$5)", s.ID, ev.Sequence, id, commandID, eb); e != nil {
+		return s, clock.Event{}, e
+	}
+	if e = saveSnapshot(ctx, tx, s); e != nil {
+		return s, clock.Event{}, e
+	}
+	if e = tx.Commit(ctx); e != nil {
+		return s, clock.Event{}, e
+	}
+	return s, ev, nil
 }
 func (p *Postgres) AddClock(ctx context.Context, c Capability, t clock.ClockType, d time.Duration, now time.Time) (InstanceSnapshot, error) {
 	if e := requireControl(c); e != nil {
@@ -240,7 +252,7 @@ func (p *Postgres) UpdateClock(ctx context.Context, c Capability, id string, pat
 			s.Clocks[i].Label = *patch.Label
 		}
 		if patch.Order != nil {
-			s.Clocks[i].Order = *patch.Order
+			reorderClock(s, id, *patch.Order)
 		}
 		if patch.Highlighted != nil {
 			if *patch.Highlighted {
@@ -331,4 +343,44 @@ func (p *Postgres) RawCapabilityCount(ctx context.Context, raw string) (int, err
 	var n int
 	e := p.pool.QueryRow(ctx, "SELECT count(*) FROM capabilities WHERE encode(token_hash,'escape')=$1", raw).Scan(&n)
 	return n, e
+}
+
+func (p *Postgres) ExpireDue(ctx context.Context, now time.Time) ([]InstanceSnapshot, error) {
+	rows, e := p.pool.Query(ctx, "SELECT id FROM instances WHERE lifecycle='active'")
+	if e != nil {
+		return nil, e
+	}
+	ids := []string{}
+	for rows.Next() {
+		var id string
+		if e = rows.Scan(&id); e != nil {
+			rows.Close()
+			return nil, e
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	changed := []InstanceSnapshot{}
+	for _, id := range ids {
+		s, e := p.Snapshot(ctx, id)
+		if e != nil {
+			continue
+		}
+		dirty := false
+		for _, c := range s.Clocks {
+			if c.Type != clock.Timer || c.State != clock.Running || clock.RemainingAt(c, now) > 0 {
+				continue
+			}
+			cmd := clock.Command{ID: fmt.Sprintf("expire:%s:%d", c.ID, c.Version), Type: clock.Expire, DeviceID: "server"}
+			next, _, applyErr := p.ApplyCommand(ctx, Capability{InstanceID: id, Scope: Control}, c.ID, cmd, now)
+			if applyErr == nil {
+				s = next
+				dirty = true
+			}
+		}
+		if dirty {
+			changed = append(changed, s)
+		}
+	}
+	return changed, nil
 }

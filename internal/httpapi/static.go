@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"crypto/rand"
 	"embed"
+	"encoding/base64"
 	"io/fs"
 	"mime"
 	"net/http"
@@ -9,7 +11,7 @@ import (
 	"strings"
 )
 
-//go:embed dist
+//go:embed all:dist
 var webAssets embed.FS
 
 func staticHandler() http.Handler {
@@ -42,6 +44,14 @@ func staticHandler() http.Handler {
 				http.NotFound(w, r)
 				return
 			}
+			nonceBytes := make([]byte, 18)
+			if _, err = rand.Read(nonceBytes); err != nil {
+				http.Error(w, "entropy unavailable", http.StatusInternalServerError)
+				return
+			}
+			nonce := base64.RawStdEncoding.EncodeToString(nonceBytes)
+			body = []byte(strings.ReplaceAll(string(body), "<script>", `<script nonce="`+nonce+`">`))
+			w.Header().Set("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-"+nonce+"'")
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			_, _ = w.Write(body)
 			return

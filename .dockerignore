@@ -1,0 +1,10 @@
+.git
+.worktrees
+work
+outputs
+web/node_modules
+web/.svelte-kit
+web/build
+internal/httpapi/dist
+chronograph
+.env

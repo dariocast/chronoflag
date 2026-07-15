@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
@@ -205,8 +204,7 @@ func (m *Memory) UpdateClock(_ context.Context, c Capability, id string, p Clock
 		r.snapshot.Clocks[i].Label = *p.Label
 	}
 	if p.Order != nil {
-		r.snapshot.Clocks[i].Order = *p.Order
-		sort.SliceStable(r.snapshot.Clocks, func(i, j int) bool { return r.snapshot.Clocks[i].Order < r.snapshot.Clocks[j].Order })
+		reorderClock(&r.snapshot, id, *p.Order)
 	}
 	if p.Highlighted != nil {
 		if *p.Highlighted {
@@ -312,4 +310,36 @@ func (m *Memory) ArchiveAndPurge(_ context.Context, now time.Time) (int, int, er
 		}
 	}
 	return a, p, nil
+}
+
+func (m *Memory) ExpireDue(_ context.Context, now time.Time) ([]InstanceSnapshot, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	changed := []InstanceSnapshot{}
+	for _, r := range m.instances {
+		dirty := false
+		if r.snapshot.Lifecycle != Active {
+			continue
+		}
+		for i, c := range r.snapshot.Clocks {
+			if c.Type != clock.Timer || c.State != clock.Running || clock.RemainingAt(c, now) > 0 {
+				continue
+			}
+			cmd := clock.Command{ID: fmt.Sprintf("expire:%s:%d", c.ID, c.Version), Type: clock.Expire, DeviceID: "server"}
+			next, ev, e := clock.Apply(c, cmd, now)
+			if e != nil {
+				continue
+			}
+			r.snapshot.Clocks[i] = next
+			r.snapshot.Version++
+			ev.Sequence = r.snapshot.Version
+			r.events = append(r.events, ev)
+			r.commands[cmd.ID] = ev
+			dirty = true
+		}
+		if dirty {
+			changed = append(changed, clone(r.snapshot))
+		}
+	}
+	return changed, nil
 }

@@ -81,6 +81,29 @@ func TestMemoryStoreAddsIndependentTimerAndUpdatesBoard(t *testing.T) {
 	if err != nil || snap.HighlightedClockID != snap.Clocks[1].ID || snap.Clocks[1].Label != "HEAT 2" {
 		t.Fatalf("update: %#v %v", snap, err)
 	}
+	movedID := snap.Clocks[1].ID
+	snap, err = s.UpdateClock(ctx, cap, movedID, store.ClockPatch{Order: ptr(0)}, now)
+	if err != nil || snap.Clocks[0].ID != movedID {
+		t.Fatalf("reorder: %#v %v", snap, err)
+	}
+}
+
+func TestMemoryStoreExpiresTimersWithoutAConnectedController(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	s := store.NewMemory()
+	created, _ := s.CreateInstance(ctx, now)
+	cap, _ := s.ResolveCapability(ctx, created.ControlToken)
+	snap, _ := s.AddClock(ctx, cap, clock.Timer, time.Second, now)
+	timer := snap.Clocks[1]
+	snap, _, _ = s.ApplyCommand(ctx, cap, timer.ID, clock.Command{ID: "start-timer", Type: clock.Start}, now)
+	changed, err := s.ExpireDue(ctx, now.Add(time.Second))
+	if err != nil || len(changed) != 1 {
+		t.Fatalf("changed=%d err=%v", len(changed), err)
+	}
+	if changed[0].Clocks[1].State != clock.Expired {
+		t.Fatalf("state=%s", changed[0].Clocks[1].State)
+	}
 }
 
 func ptr[T any](v T) *T { return &v }

@@ -75,4 +75,27 @@ type Store interface {
 	Export(context.Context, Capability) (ExportData, error)
 	DeleteInstance(context.Context, Capability) error
 	ArchiveAndPurge(context.Context, time.Time) (int, int, error)
+	ExpireDue(context.Context, time.Time) ([]InstanceSnapshot, error)
+}
+
+func reorderClock(s *InstanceSnapshot, id string, target int) bool {
+	from := findClock(s, id)
+	if from < 0 {
+		return false
+	}
+	if target < 0 {
+		target = 0
+	}
+	if target >= len(s.Clocks) {
+		target = len(s.Clocks) - 1
+	}
+	item := s.Clocks[from]
+	s.Clocks = append(s.Clocks[:from], s.Clocks[from+1:]...)
+	s.Clocks = append(s.Clocks, clock.Clock{})
+	copy(s.Clocks[target+1:], s.Clocks[target:])
+	s.Clocks[target] = item
+	for i := range s.Clocks {
+		s.Clocks[i].Order = i
+	}
+	return true
 }

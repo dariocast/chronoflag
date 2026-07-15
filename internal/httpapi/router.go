@@ -239,6 +239,8 @@ func (a *API) sse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache, no-transform")
 	w.Header().Set("X-Accel-Buffering", "no")
+	ch, cancel := a.hub.Subscribe(c.InstanceID)
+	defer cancel()
 	s, e := a.store.Snapshot(r.Context(), c.InstanceID)
 	if e != nil {
 		return
@@ -246,8 +248,6 @@ func (a *API) sse(w http.ResponseWriter, r *http.Request) {
 	b, _ := json.Marshal(envelope(s, a.now()))
 	fmt.Fprintf(w, "id: %d\nevent: snapshot\ndata: %s\n\n", s.Version, b)
 	f.Flush()
-	ch, cancel := a.hub.Subscribe(c.InstanceID)
-	defer cancel()
 	tick := time.NewTicker(20 * time.Second)
 	defer tick.Stop()
 	for {
