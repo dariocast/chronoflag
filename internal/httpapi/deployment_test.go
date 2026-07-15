@@ -27,6 +27,7 @@ func TestLandingTargetsCanonicalApp(t *testing.T) {
 	for _, forbidden := range []string{
 		"fonts.googleapis.com",
 		"fonts.gstatic.com",
+		"Start timing",
 		`src="http://`,
 		`src="https://`,
 	} {

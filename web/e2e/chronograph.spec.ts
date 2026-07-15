@@ -3,9 +3,13 @@ import { expect, test } from '@playwright/test';
 test('creates, controls and publicly tracks a stopwatch', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/');
-  await expect(page.getByText('00:00.00')).toBeVisible();
-  await page.getByRole('button', { name: 'Start now' }).click();
+
   await expect(page).toHaveURL(/\/c\//);
+  await expect(page.getByText('00:00.00', { exact: true })).toBeVisible();
+  await expect(page.getByText('idle', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open. Start. Share.' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByText('running', { exact: true })).toBeVisible();
 
   const shareTrigger = page.getByRole('button', { name: 'Share' });
@@ -28,7 +32,7 @@ test('creates, controls and publicly tracks a stopwatch', async ({ page, context
 
 test('adds an independent countdown timer', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Start now' }).click();
+  await expect(page).toHaveURL(/\/c\//);
   await page.getByRole('button', { name: 'Add clock' }).click();
   await expect(page.getByRole('dialog', { name: 'Add clock' })).toBeVisible();
   await page.getByRole('button', { name: '1 minute' }).click();
@@ -48,9 +52,6 @@ test('fits supported viewports with touch-sized controls', async ({ page }) => {
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.goto('/');
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
-
-    await page.getByRole('button', { name: 'Start now' }).click();
     await expect(page).toHaveURL(/\/c\//);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
 

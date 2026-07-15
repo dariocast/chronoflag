@@ -1,6 +1,6 @@
 # Chronoflag
 
-Chronoflag is a zero-configuration, server-authoritative shared stopwatch and countdown timer. Opening the app shows a ready stopwatch; the first action creates an anonymous instance with separate secret control and unlisted public-view links.
+Chronoflag is a zero-configuration, server-authoritative shared stopwatch and countdown timer. Opening the app creates an anonymous instance with a ready, stopped stopwatch plus separate secret control and unlisted public-view links. Time starts only when an operator explicitly presses Start.
 
 ## Features
 

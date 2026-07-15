@@ -1,66 +1,36 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { createInstance, getSnapshot, command } from '$lib/api';
+  import { onMount } from 'svelte';
+  import { createInstance } from '$lib/api';
 
-  let busy = false;
   let error = '';
 
-  async function start() {
-    busy = true;
+  async function prepare() {
     error = '';
     try {
       const made = await createInstance();
-      const token = made.control_url.split('/').pop()!;
-      const snapshot = await getSnapshot('control', token);
-      await command(token, snapshot.clocks[0].id, 'start');
-      await goto(made.control_url);
+      await goto(made.control_url, { replaceState: true });
     } catch (reason) {
-      error = reason instanceof Error ? reason.message : 'Could not start a clock.';
-      busy = false;
+      error = reason instanceof Error ? reason.message : 'Could not prepare a clock.';
     }
   }
+
+  onMount(() => {
+    void prepare();
+  });
 </script>
 
 <svelte:head>
-  <title>Chronoflag — Shared time, instantly</title>
-  <meta name="description" content="A server-synchronized stopwatch and timer you can share instantly." />
+  <title>Preparing your clock — Chronoflag</title>
+  <meta name="description" content="Preparing a shared server-synchronized stopwatch." />
 </svelte:head>
 
-<main class="landing">
-  <header class="landing-top">
-    <p class="eyebrow"><span class="registration-dot" aria-hidden="true"></span> Cloud-synchronized time</p>
-    <div class="landing-mark" aria-label="Chronoflag">C/</div>
-  </header>
-
-  <div class="landing-layout">
-    <section class="landing-display" aria-label="Instant shared timing">
-      <div class="display-strip"><span>Server clock</span><span>Ready / 001</span></div>
-      <div class="preview">00:00.00</div>
-      <div class="display-strip bottom"><span>Precision first</span><span>EU cloud</span></div>
-    </section>
-
-    <section class="landing-copy">
-      <div class="poster-index" aria-hidden="true">№ 01</div>
-      <h1><span>Open.</span><span>Start.</span><span>Share.</span></h1>
-      <p class="landing-lede">One tap creates a live stopwatch. Your operators control it; everyone else follows the same server time.</p>
-      <button class="launch" disabled={busy} on:click={start}>
-        <span>{busy ? 'Connecting…' : 'Start now'}</span>
-        <b aria-hidden="true">→</b>
-      </button>
-      {#if error}<p class="landing-error" role="alert">{error}</p>{/if}
-    </section>
-  </div>
-
-  <footer class="landing-footer">
-    <ul class="promise" aria-label="Service benefits">
-      <li>No account</li>
-      <li>No setup</li>
-      <li>Server time</li>
-    </ul>
-    <div class="landing-stamp" aria-hidden="true"><span>Live</span><b>SYNC</b></div>
-  </footer>
-
-  <div class="poster-dots" aria-hidden="true"></div>
-  <div class="poster-cross cross-one" aria-hidden="true">＋</div>
-  <div class="poster-cross cross-two" aria-hidden="true">＋</div>
+<main class="loading" aria-busy={!error}>
+  {#if error}
+    <span role="alert">{error}</span>
+    <button on:click={prepare}>Retry</button>
+  {:else}
+    <span>Preparing your clock</span>
+    <b aria-hidden="true">00:00.00</b>
+  {/if}
 </main>
