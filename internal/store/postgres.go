@@ -49,7 +49,7 @@ func pgerr(e error) error {
 func (p *Postgres) CreateInstance(ctx context.Context, now time.Time) (CreatedInstance, error) {
 	id, control := token(), token()
 	view := id
-	s := InstanceSnapshot{ID: id, Tier: Free, Lifecycle: Active, LastControlAt: now, Clocks: []clock.Clock{clock.NewStopwatch(token())}}
+	s := InstanceSnapshot{ID: id, ViewToken: view, Tier: Free, Lifecycle: Active, LastControlAt: now, Clocks: []clock.Clock{clock.NewStopwatch(token())}}
 	b, _ := json.Marshal(s)
 	tx, e := p.pool.Begin(ctx)
 	if e != nil {
@@ -219,6 +219,9 @@ func (p *Postgres) AddClock(ctx context.Context, c Capability, t clock.ClockType
 		if s.Lifecycle != Active {
 			return ErrArchived
 		}
+		if s.Lifecycle != Active {
+			return ErrArchived
+		}
 		if len(s.Clocks) >= 100 {
 			return ErrLimit
 		}
@@ -296,11 +299,22 @@ func (p *Postgres) RotateCapability(ctx context.Context, c Capability, scope Sco
 		return CreatedInstance{}, e
 	}
 	defer tx.Rollback(ctx)
+	s, e := scanSnapshot(tx.QueryRow(ctx, "SELECT snapshot FROM instances WHERE id=$1 FOR UPDATE", c.InstanceID))
+	if e != nil {
+		return CreatedInstance{}, e
+	}
 	if _, e = tx.Exec(ctx, "DELETE FROM capabilities WHERE instance_id=$1 AND scope=$2", c.InstanceID, scope); e != nil {
 		return CreatedInstance{}, e
 	}
 	if _, e = tx.Exec(ctx, "INSERT INTO capabilities(token_hash,instance_id,scope) VALUES($1,$2,$3)", h[:], c.InstanceID, scope); e != nil {
 		return CreatedInstance{}, e
+	}
+	if scope == View {
+		s.ViewToken = raw
+		s.Version++
+		if e = saveSnapshot(ctx, tx, s); e != nil {
+			return CreatedInstance{}, e
+		}
 	}
 	if e = tx.Commit(ctx); e != nil {
 		return CreatedInstance{}, e

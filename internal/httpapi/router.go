@@ -155,6 +155,9 @@ func (a *API) rotateCapability(w http.ResponseWriter, r *http.Request) {
 		writeError(w, status(e), e.Error())
 		return
 	}
+	if s, e := a.store.Snapshot(r.Context(), c.InstanceID); e == nil {
+		a.publish(s)
+	}
 	raw := rotated.ViewToken
 	path := "/v/" + raw
 	if scope == store.Control {
@@ -301,9 +304,15 @@ func (a *API) sse(w http.ResponseWriter, r *http.Request) {
 			if !open {
 				return
 			}
+			if _, e := a.cap(r.Context(), r.PathValue("token"), scope); e != nil {
+				return
+			}
 			fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", msg.ID, msg.Event, msg.Data)
 			f.Flush()
 		case <-tick.C:
+			if _, e := a.cap(r.Context(), r.PathValue("token"), scope); e != nil {
+				return
+			}
 			fmt.Fprint(w, ": keepalive\n\n")
 			f.Flush()
 		case <-r.Context().Done():

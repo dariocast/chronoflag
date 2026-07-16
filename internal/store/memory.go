@@ -43,7 +43,7 @@ func (m *Memory) CreateInstance(_ context.Context, now time.Time) (CreatedInstan
 	id, control := token(), token()
 	view := id
 	clockID := token()
-	s := InstanceSnapshot{ID: id, Tier: Free, Lifecycle: Active, LastControlAt: now, Clocks: []clock.Clock{clock.NewStopwatch(clockID)}}
+	s := InstanceSnapshot{ID: id, ViewToken: view, Tier: Free, Lifecycle: Active, LastControlAt: now, Clocks: []clock.Clock{clock.NewStopwatch(clockID)}}
 	m.instances[id] = &memoryRecord{snapshot: s, commands: map[string]clock.Event{}}
 	m.capabilities[hash(control)] = Capability{InstanceID: id, Scope: Control}
 	m.capabilities[hash(view)] = Capability{InstanceID: id, Scope: View}
@@ -167,6 +167,9 @@ func (m *Memory) AddClock(_ context.Context, c Capability, t clock.ClockType, d 
 	if r.snapshot.Lifecycle != Active {
 		return clone(r.snapshot), ErrArchived
 	}
+	if r.snapshot.Lifecycle != Active {
+		return clone(r.snapshot), ErrArchived
+	}
 	if len(r.snapshot.Clocks) >= 100 {
 		return clone(r.snapshot), ErrLimit
 	}
@@ -255,6 +258,11 @@ func (m *Memory) RotateCapability(_ context.Context, c Capability, scope Scope) 
 	}
 	raw := token()
 	m.capabilities[hash(raw)] = Capability{InstanceID: c.InstanceID, Scope: scope}
+	if scope == View {
+		r := m.instances[c.InstanceID]
+		r.snapshot.ViewToken = raw
+		r.snapshot.Version++
+	}
 	result := CreatedInstance{InstanceID: c.InstanceID}
 	if scope == Control {
 		result.ControlToken = raw

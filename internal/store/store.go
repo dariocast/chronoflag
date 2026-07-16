@@ -44,6 +44,7 @@ type CreatedInstance struct{ InstanceID, ControlToken, ViewToken string }
 type InstanceSnapshot struct {
 	ID                 string        `json:"id"`
 	Title              string        `json:"title"`
+	ViewToken          string        `json:"view_token"`
 	Tier               Tier          `json:"tier"`
 	Lifecycle          Lifecycle     `json:"lifecycle"`
 	Clocks             []clock.Clock `json:"clocks"`

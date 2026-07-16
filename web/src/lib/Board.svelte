@@ -21,7 +21,7 @@
 
   $: control = mode === 'control';
   $: publicURL = snapshot && typeof location !== 'undefined'
-    ? `${location.origin}/v/${snapshot.id}`
+    ? `${location.origin}/v/${snapshot.view_token ?? snapshot.id}`
     : '';
 
   onMount(() => {
