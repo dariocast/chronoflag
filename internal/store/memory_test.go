@@ -106,4 +106,25 @@ func TestMemoryStoreExpiresTimersWithoutAConnectedController(t *testing.T) {
 	}
 }
 
+func TestMemoryStoreUpdatesTitleAndRotatesCapabilities(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemory()
+	created, _ := s.CreateInstance(ctx, time.Now())
+	control, _ := s.ResolveCapability(ctx, created.ControlToken)
+	updated, err := s.UpdateInstance(ctx, control, store.InstancePatch{Title: ptr("City relay")}, time.Now())
+	if err != nil || updated.Title != "City relay" {
+		t.Fatalf("updated=%#v err=%v", updated, err)
+	}
+	replacement, err := s.RotateCapability(ctx, control, store.Control)
+	if err != nil || replacement.ControlToken == "" || replacement.ControlToken == created.ControlToken {
+		t.Fatalf("replacement=%#v err=%v", replacement, err)
+	}
+	if _, err := s.ResolveCapability(ctx, created.ControlToken); err != store.ErrNotFound {
+		t.Fatalf("old token error=%v", err)
+	}
+	if _, err := s.ResolveCapability(ctx, replacement.ControlToken); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func ptr[T any](v T) *T { return &v }

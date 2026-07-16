@@ -30,6 +30,8 @@ func NewRouter(s store.Store, h *realtime.Hub) http.Handler {
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]string{"status": "ok"}) })
 	m.HandleFunc("POST /api/v1/instances", a.create)
 	m.HandleFunc("GET /api/v1/control/{token}", a.snapshot(store.Control))
+	m.HandleFunc("PATCH /api/v1/control/{token}", a.updateInstance)
+	m.HandleFunc("POST /api/v1/control/{token}/capabilities/{scope}/rotate", a.rotateCapability)
 	m.HandleFunc("GET /api/v1/view/{token}", a.snapshot(store.View))
 	m.HandleFunc("POST /api/v1/control/{token}/clocks", a.addClock)
 	m.HandleFunc("PATCH /api/v1/control/{token}/clocks/{clock}", a.updateClock)
@@ -117,6 +119,49 @@ func (a *API) snapshot(scope store.Scope) http.HandlerFunc {
 		}
 		writeJSON(w, 200, envelope(s, a.now()))
 	}
+}
+func (a *API) updateInstance(w http.ResponseWriter, r *http.Request) {
+	c, e := a.cap(r.Context(), r.PathValue("token"), store.Control)
+	if e != nil {
+		writeError(w, status(e), "forbidden")
+		return
+	}
+	var patch store.InstancePatch
+	if e = decode(r, &patch); e != nil || patch.Title == nil {
+		writeError(w, 400, "invalid_json")
+		return
+	}
+	s, e := a.store.UpdateInstance(r.Context(), c, patch, a.now())
+	if e != nil {
+		writeError(w, status(e), e.Error())
+		return
+	}
+	a.publish(s)
+	writeJSON(w, 200, envelope(s, a.now()))
+}
+func (a *API) rotateCapability(w http.ResponseWriter, r *http.Request) {
+	c, e := a.cap(r.Context(), r.PathValue("token"), store.Control)
+	if e != nil {
+		writeError(w, status(e), "forbidden")
+		return
+	}
+	scope := store.Scope(r.PathValue("scope"))
+	if scope != store.Control && scope != store.View {
+		writeError(w, 400, "invalid_scope")
+		return
+	}
+	rotated, e := a.store.RotateCapability(r.Context(), c, scope)
+	if e != nil {
+		writeError(w, status(e), e.Error())
+		return
+	}
+	raw := rotated.ViewToken
+	path := "/v/" + raw
+	if scope == store.Control {
+		raw = rotated.ControlToken
+		path = "/c/" + raw
+	}
+	writeJSON(w, 200, map[string]string{"url": path, string(scope) + "_url": path})
 }
 func envelope(s store.InstanceSnapshot, now time.Time) any {
 	return struct {

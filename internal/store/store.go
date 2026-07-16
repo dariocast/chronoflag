@@ -43,6 +43,7 @@ type Capability struct {
 type CreatedInstance struct{ InstanceID, ControlToken, ViewToken string }
 type InstanceSnapshot struct {
 	ID                 string        `json:"id"`
+	Title              string        `json:"title"`
 	Tier               Tier          `json:"tier"`
 	Lifecycle          Lifecycle     `json:"lifecycle"`
 	Clocks             []clock.Clock `json:"clocks"`
@@ -50,6 +51,9 @@ type InstanceSnapshot struct {
 	Version            int64         `json:"version"`
 	LastControlAt      time.Time     `json:"last_control_at"`
 	ArchivedAt         *time.Time    `json:"archived_at,omitempty"`
+}
+type InstancePatch struct {
+	Title *string `json:"title,omitempty"`
 }
 type ClockPatch struct {
 	Label       *string `json:"label,omitempty"`
@@ -70,6 +74,8 @@ type Store interface {
 	Undo(context.Context, Capability, string, string, time.Time) (InstanceSnapshot, clock.Event, error)
 	AddClock(context.Context, Capability, clock.ClockType, time.Duration, time.Time) (InstanceSnapshot, error)
 	UpdateClock(context.Context, Capability, string, ClockPatch, time.Time) (InstanceSnapshot, error)
+	UpdateInstance(context.Context, Capability, InstancePatch, time.Time) (InstanceSnapshot, error)
+	RotateCapability(context.Context, Capability, Scope) (CreatedInstance, error)
 	RemoveClock(context.Context, Capability, string, time.Time) (InstanceSnapshot, error)
 	EventsAfter(context.Context, string, int64) ([]clock.Event, error)
 	Export(context.Context, Capability) (ExportData, error)

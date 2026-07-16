@@ -103,3 +103,50 @@ func TestSSEStartsWithSnapshot(t *testing.T) {
 		t.Fatalf("sse=%q", buf[:n])
 	}
 }
+
+func TestRouterUpdatesTitleAndRotatesCapability(t *testing.T) {
+	ts := httptest.NewServer(httpapi.NewRouter(store.NewMemory(), realtime.NewHub(2)))
+	defer ts.Close()
+	createdRes, err := http.Post(ts.URL+"/api/v1/instances", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var created struct {
+		ControlURL string `json:"control_url"`
+		ViewURL    string `json:"view_url"`
+	}
+	json.NewDecoder(createdRes.Body).Decode(&created)
+	createdRes.Body.Close()
+	token := strings.TrimPrefix(created.ControlURL, "/c/")
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/api/v1/control/"+token, strings.NewReader(`{"title":"City relay"}`))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil || res.StatusCode != http.StatusOK {
+		t.Fatalf("title status=%v err=%v", res.Status, err)
+	}
+	var snap struct {
+		Title string `json:"title"`
+	}
+	json.NewDecoder(res.Body).Decode(&snap)
+	res.Body.Close()
+	if snap.Title != "City relay" {
+		t.Fatalf("title=%q", snap.Title)
+	}
+	rotate, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/control/"+token+"/capabilities/control/rotate", nil)
+	rotated, err := http.DefaultClient.Do(rotate)
+	if err != nil || rotated.StatusCode != http.StatusOK {
+		t.Fatalf("rotate status=%v err=%v", rotated.Status, err)
+	}
+	var links struct {
+		ControlURL string `json:"control_url"`
+	}
+	json.NewDecoder(rotated.Body).Decode(&links)
+	rotated.Body.Close()
+	if links.ControlURL == created.ControlURL {
+		t.Fatal("control URL did not rotate")
+	}
+	old, _ := http.Get(ts.URL + "/api/v1/control/" + token)
+	if old.StatusCode != http.StatusNotFound {
+		t.Fatalf("old status=%d", old.StatusCode)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -216,6 +217,51 @@ func (m *Memory) UpdateClock(_ context.Context, c Capability, id string, p Clock
 	r.snapshot.Version++
 	r.snapshot.LastControlAt = now
 	return clone(r.snapshot), nil
+}
+func (m *Memory) UpdateInstance(_ context.Context, c Capability, p InstancePatch, now time.Time) (InstanceSnapshot, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := requireControl(c); err != nil {
+		return InstanceSnapshot{}, err
+	}
+	r := m.instances[c.InstanceID]
+	if r == nil {
+		return InstanceSnapshot{}, ErrNotFound
+	}
+	if p.Title != nil {
+		title := strings.TrimSpace(*p.Title)
+		if len([]rune(title)) > 120 {
+			return clone(r.snapshot), ErrLimit
+		}
+		r.snapshot.Title = title
+		r.snapshot.Version++
+		r.snapshot.LastControlAt = now
+	}
+	return clone(r.snapshot), nil
+}
+func (m *Memory) RotateCapability(_ context.Context, c Capability, scope Scope) (CreatedInstance, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := requireControl(c); err != nil {
+		return CreatedInstance{}, err
+	}
+	if _, ok := m.instances[c.InstanceID]; !ok {
+		return CreatedInstance{}, ErrNotFound
+	}
+	for key, existing := range m.capabilities {
+		if existing.InstanceID == c.InstanceID && existing.Scope == scope {
+			delete(m.capabilities, key)
+		}
+	}
+	raw := token()
+	m.capabilities[hash(raw)] = Capability{InstanceID: c.InstanceID, Scope: scope}
+	result := CreatedInstance{InstanceID: c.InstanceID}
+	if scope == Control {
+		result.ControlToken = raw
+	} else {
+		result.ViewToken = raw
+	}
+	return result, nil
 }
 func (m *Memory) RemoveClock(_ context.Context, c Capability, id string, now time.Time) (InstanceSnapshot, error) {
 	m.mu.Lock()

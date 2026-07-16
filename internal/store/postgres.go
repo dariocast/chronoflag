@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"chronograph/internal/clock"
@@ -265,6 +266,52 @@ func (p *Postgres) UpdateClock(ctx context.Context, c Capability, id string, pat
 		s.LastControlAt = now
 		return nil
 	})
+}
+func (p *Postgres) UpdateInstance(ctx context.Context, c Capability, patch InstancePatch, now time.Time) (InstanceSnapshot, error) {
+	if e := requireControl(c); e != nil {
+		return InstanceSnapshot{}, e
+	}
+	return locked(ctx, p.pool, c.InstanceID, func(s *InstanceSnapshot) error {
+		if patch.Title == nil {
+			return nil
+		}
+		title := strings.TrimSpace(*patch.Title)
+		if len([]rune(title)) > 120 {
+			return ErrLimit
+		}
+		s.Title = title
+		s.Version++
+		s.LastControlAt = now
+		return nil
+	})
+}
+func (p *Postgres) RotateCapability(ctx context.Context, c Capability, scope Scope) (CreatedInstance, error) {
+	if e := requireControl(c); e != nil {
+		return CreatedInstance{}, e
+	}
+	raw := token()
+	h := sha256.Sum256([]byte(raw))
+	tx, e := p.pool.Begin(ctx)
+	if e != nil {
+		return CreatedInstance{}, e
+	}
+	defer tx.Rollback(ctx)
+	if _, e = tx.Exec(ctx, "DELETE FROM capabilities WHERE instance_id=$1 AND scope=$2", c.InstanceID, scope); e != nil {
+		return CreatedInstance{}, e
+	}
+	if _, e = tx.Exec(ctx, "INSERT INTO capabilities(token_hash,instance_id,scope) VALUES($1,$2,$3)", h[:], c.InstanceID, scope); e != nil {
+		return CreatedInstance{}, e
+	}
+	if e = tx.Commit(ctx); e != nil {
+		return CreatedInstance{}, e
+	}
+	result := CreatedInstance{InstanceID: c.InstanceID}
+	if scope == Control {
+		result.ControlToken = raw
+	} else {
+		result.ViewToken = raw
+	}
+	return result, nil
 }
 func (p *Postgres) RemoveClock(ctx context.Context, c Capability, id string, now time.Time) (InstanceSnapshot, error) {
 	if e := requireControl(c); e != nil {
