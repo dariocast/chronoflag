@@ -18,11 +18,14 @@ class Capability {
     this.token,
     this.access, [
     this.origin = 'https://app.chronoflag.com',
+    this.viewToken,
   ]);
   final String token, origin;
+  final String? viewToken;
   final Access access;
   String get path => '/${access == Access.control ? 'c' : 'v'}/$token';
   Uri get link => Uri.parse('$origin$path');
+  Uri get viewerLink => Uri.parse('$origin/v/${viewToken ?? token}');
   static Capability? parse(Uri uri) {
     if (uri.pathSegments.length != 2 ||
         !['c', 'v'].contains(uri.pathSegments.first) ||
@@ -40,11 +43,13 @@ class Capability {
     'token': token,
     'access': access.name,
     'origin': origin,
+    'view_token': viewToken,
   };
   factory Capability.fromJson(Map<String, dynamic> json) => Capability(
     json['token'],
     json['access'] == 'control' ? Access.control : Access.view,
     json['origin'] ?? 'https://app.chronoflag.com',
+    json['view_token'],
   );
   @override
   bool operator ==(Object other) =>
@@ -145,7 +150,15 @@ class Api {
 
   Future<Capability> create() async {
     final data = await _request('POST', '/api/v1/instances', {});
-    return Capability.parse(Uri.parse('$origin${data['control_url']}'))!;
+    final control = Capability.parse(
+      Uri.parse('$origin${data['control_url']}'),
+    )!;
+    return Capability(
+      control.token,
+      control.access,
+      origin,
+      Uri.parse(data['view_url']).pathSegments.last,
+    );
   }
 
   Future<Snapshot> snapshot(Capability c) async => Snapshot.fromJson(
@@ -188,7 +201,10 @@ class Api {
       'POST',
       '/api/v1/control/${c.token}/capabilities/${access.name}/rotate',
     );
-    return Capability.parse(Uri.parse('$origin${data['url']}'))!;
+    final next = Capability.parse(Uri.parse('$origin${data['url']}'))!;
+    return access == Access.control
+        ? Capability(next.token, next.access, origin, c.viewToken)
+        : Capability(c.token, c.access, origin, next.token);
   }
 }
 
@@ -514,23 +530,10 @@ class _BoardScreenState extends State<BoardScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Share live board'),
-            QrImageView(
-              data: Capability(
-                capability.token,
-                Access.view,
-                capability.origin,
-              ).link.toString(),
-              size: 180,
-            ),
+            QrImageView(data: capability.viewerLink.toString(), size: 180),
             FilledButton.icon(
               onPressed: () => SharePlus.instance.share(
-                ShareParams(
-                  text: Capability(
-                    capability.token,
-                    Access.view,
-                    capability.origin,
-                  ).link.toString(),
-                ),
+                ShareParams(text: capability.viewerLink.toString()),
               ),
               icon: const Icon(Icons.share),
               label: const Text('Share viewer link'),
